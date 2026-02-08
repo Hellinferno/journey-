@@ -14,4 +14,13 @@ export default defineSchema({
         direction: v.string(), // "inbound" | "outbound"
         timestamp: v.string(),
     }),
+    invoices: defineTable({
+        telegram_id: v.string(),
+        vendor: v.string(),
+        amount: v.number(),
+        gstin: v.optional(v.string()), // Optional fields
+        date: v.optional(v.string()),
+        status: v.string(),
+        timestamp: v.string(),
+    }),
 });

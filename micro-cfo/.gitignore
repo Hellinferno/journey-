@@ -1,2 +1,8 @@
-
+__pycache__/
+*.py[cod]
+.env
 .env.local
+.venv/
+venv/
+bot_debug.log
+temp_*
