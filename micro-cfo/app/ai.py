@@ -19,8 +19,9 @@ def analyze_invoice(image_path: str) -> InvoiceData:
     """
     
     # 2. Load the Model
+    # Explicitly use models/ prefix which sometimes helps with 404s
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="models/gemini-1.5-flash",
         generation_config={
             "response_mime_type": "application/json"
         }
@@ -28,34 +29,30 @@ def analyze_invoice(image_path: str) -> InvoiceData:
 
     # 3. Load Image
     try:
-        img = Image.open(image_path)
-    except Exception as e:
-        raise ValueError(f"Failed to open image: {e}")
+        with Image.open(image_path) as img:
+            # 4. Define the Prompt with explicit schema in text
+            prompt = """
+            Extract data from this Indian invoice. 
+            Return a JSON object matching this structure:
+            {
+                "vendor_name": "string",
+                "invoice_number": "string or null",
+                "date": "string or null",
+                "total_amount": float,
+                "tax_amount": float,
+                "gstin": "string or null",
+                "currency": "string"
+            }
 
-    # 4. Define the Prompt with explicit schema in text
-    prompt = """
-    Extract data from this Indian invoice. 
-    Return a JSON object matching this structure:
-    {
-        "vendor_name": "string",
-        "invoice_number": "string or null",
-        "date": "string or null",
-        "total_amount": float,
-        "tax_amount": float,
-        "gstin": "string or null",
-        "currency": "string"
-    }
+            - Handle Hindi/English text accurately.
+            - If the GSTIN is missing, leave it null.
+            - Calculate tax_amount if not explicitly stated (Total - Subtotal).
+            """
 
-    - Handle Hindi/English text accurately.
-    - If the GSTIN is missing, leave it null.
-    - Calculate tax_amount if not explicitly stated (Total - Subtotal).
-    """
-
-    # 5. Generate Content
-    try:
-        response = model.generate_content([prompt, img])
+            # 5. Generate Content
+            response = model.generate_content([prompt, img])
         
-        # 6. Parse Response
+        # 6. Parse Response (Outside 'with' block to ensure file is closed)
         try:
             # Clean possible markdown wrap
             raw_text = response.text.strip()
@@ -73,5 +70,5 @@ def analyze_invoice(image_path: str) -> InvoiceData:
             raise parse_error
 
     except Exception as e:
-        print(f"Gemini API Error: {e}")
+        print(f"Gemini API/File Error: {e}")
         raise e
