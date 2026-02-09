@@ -126,7 +126,7 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
 
         except Exception as ai_error:
             logger.error(f"AI Processing Error: {ai_error}")
-            await msg.reply_text(f"⚠️ **Extraction Failed**\nError: `{ai_error}`\n\nPlease ensure your API Key has access to Gemini 1.5 Flash/Pro or a Vision-capable model.", parse_mode="Markdown")
+            await msg.reply_text(f"⚠️ **Extraction Failed**\nError: `{ai_error}`\n\nPlease ensure your API Key has access to Gemini 2.5 Flash or a Vision-capable model.", parse_mode="Markdown")
         
         finally:
             # Cleanup

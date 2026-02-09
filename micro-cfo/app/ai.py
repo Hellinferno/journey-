@@ -27,11 +27,11 @@ def clean_json_text(text: str) -> str:
 
 def analyze_invoice(image_path: str) -> InvoiceData:
     """
-    Sends image to Gemini 1.5 Flash.
+    Sends image to Gemini 2.5 Flash (current stable version).
     """
     # 3. Use ONLY the single working model
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.5-flash",
         generation_config={
             "response_mime_type": "application/json",
             "temperature": 0.1
@@ -53,7 +53,7 @@ def analyze_invoice(image_path: str) -> InvoiceData:
             }
             """
             
-            print("📤 Sending to Gemini 1.5 Flash...")
+            print("📤 Sending to Gemini 2.5 Flash...")
             response = model.generate_content([prompt, img])
             
             # 4. Clean and Parse
