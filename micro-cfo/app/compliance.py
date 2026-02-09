@@ -23,17 +23,6 @@ class ComplianceAuditor:
         self.hard_rules = HardRulesValidator()
         self.query_engine = RAGQueryEngine(self.api_key)
         self.ai_analyzer = AIComplianceAnalyzer(self.api_key)
-
-# Legacy function for backward compatibility - now uses RAG engine
-def audit_invoice(invoice: InvoiceData) -> Dict:
-    """
-    Legacy function for backward compatibility
-    Now uses the RAG-powered ComplianceAuditor
-    """
-    auditor = ComplianceAuditor()
-    return auditor.audit_invoice(invoice)
-
-
     
     def audit_invoice(self, invoice: InvoiceData) -> Dict:
         """
@@ -113,3 +102,13 @@ def audit_invoice(invoice: InvoiceData) -> Dict:
             "citations": citations,
             "itc_eligible": ai_result.get("itc_eligible", False),
         }
+
+
+# Legacy function for backward compatibility - now uses RAG engine
+def audit_invoice(invoice: InvoiceData) -> Dict:
+    """
+    Legacy function for backward compatibility
+    Now uses the RAG-powered ComplianceAuditor
+    """
+    auditor = ComplianceAuditor()
+    return auditor.audit_invoice(invoice)
