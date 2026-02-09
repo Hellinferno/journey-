@@ -26,4 +26,19 @@ export default defineSchema({
         status: v.string(),
         timestamp: v.string(),
     }),
+    // RAG Knowledge Base
+    legal_docs: defineTable({
+        chunk_text: v.string(),
+        source_file: v.string(),
+        page_number: v.number(),
+        category: v.string(), // "GST" or "Income_Tax"
+        embedding: v.array(v.float64()),
+    })
+        .vectorIndex("by_embedding", {
+            vectorField: "embedding",
+            dimensions: 768,
+            filterFields: ["category", "source_file"],
+        })
+        .index("by_source", ["source_file"])
+        .index("by_category", ["category"]),
 });

@@ -1,7 +1,13 @@
 python-telegram-bot>=22.6
 google-generativeai
+google-genai
 convex
 python-dotenv
 Pillow
 requests
 pytesseract
+pypdf>=3.0.0
+pydantic
+hypothesis>=6.0.0
+pytest>=7.0.0
+reportlab>=4.0.0
