@@ -19,6 +19,9 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+# Set higher logging level for httpx to avoid all GET and POST requests being logged
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # 2. Load Config
@@ -37,6 +40,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     chat_id = update.effective_chat.id
     
+    logger.info(f"User started bot: {user.id} ({user.username})")
+
     # Register/Get User in Convex
     # Note: We use a fire-and-forget approach or simple mutation here
     try:
@@ -45,11 +50,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "full_name": user.full_name or "Unknown"
         })
     except Exception as e:
-        logger.error(f"Convex Error (getOrCreateUser): {e}")
+        logger.warning(f"Convex Error (getOrCreateUser): {e}")
 
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Hello {user.first_name}! I'm your Micro-CFO bot. 🤖\n\nSend me a photo of an invoice, and I'll process it for you!"
+        text=f"Hello {user.first_name}! I'm your Micro-CFO bot. 🤖\n\nSend me a photo of an invoice, and I'll process it for you!\n\nType /help to see what I can do."
+    )
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Responds to /help"""
+    help_text = (
+        "🤖 *Micro-CFO Bot Help*\n\n"
+        "I can help you track your expenses by analyzing invoices.\n\n"
+        "*How to use me:*\n"
+        "1. Send me a photo 📸 or file guarantily of an invoice.\n"
+        "2. I will extract the Vendor, Date, Amount, and GSTIN.\n"
+        "3. I will save it to your dashboard.\n\n"
+        "*Commands:*\n"
+        "/start - Restart the bot\n"
+        "/help - Show this help message"
+    )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=help_text,
+        parse_mode="Markdown"
     )
 
 async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -86,7 +110,7 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
                 "vendor": invoice.vendor_name,
                 "amount": invoice.total_amount,
                 "gstin": invoice.gstin,
-                "date": invoice.date if invoice.date else "",
+                "date": invoice.date if invoice.date else None,
                 "status": "processed"
             })
 
@@ -102,7 +126,7 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
 
         except Exception as ai_error:
             logger.error(f"AI Processing Error: {ai_error}")
-            await msg.reply_text("⚠️ Could not Extract details from this image. Please ensure it's a clear invoice.")
+            await msg.reply_text(f"⚠️ **Extraction Failed**\nError: `{ai_error}`\n\nPlease ensure your API Key has access to Gemini 1.5 Flash/Pro or a Vision-capable model.", parse_mode="Markdown")
         
         finally:
             # Cleanup
@@ -135,6 +159,7 @@ if __name__ == '__main__':
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle_document_or_photo))
     app.add_handler(MessageHandler(filters.ALL, handle_any)) # Catch everything else
     
