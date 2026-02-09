@@ -9,6 +9,9 @@ export const add = mutation({
         gstin: v.optional(v.string()),
         date: v.optional(v.string()),
         status: v.string(),
+        // New Phase 3 Args
+        category: v.optional(v.string()),
+        compliance_flags: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         await ctx.db.insert("invoices", {

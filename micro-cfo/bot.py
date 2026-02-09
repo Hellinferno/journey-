@@ -9,6 +9,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Messa
 
 from convex import ConvexClient
 from app.ai import analyze_invoice  # Using Gemini based AI analysis
+from app.compliance import audit_invoice  # Import the new compliance brain
 
 # 1. Setup Logging
 logging.basicConfig(
@@ -104,13 +105,19 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
             logger.info(f"Analyzing file: {local_path}")
             invoice = analyze_invoice(local_path)
             
-            # 2. Save to Convex
+            # 2. Run Compliance Audit (The "Junior CA")
+            audit_result = audit_invoice(invoice)
+            
+            # 3. Save to Convex
             # Build mutation args, only include optional fields if they have values
             mutation_args = {
                 "telegram_id": str(chat_id),
                 "vendor": invoice.vendor_name,
                 "amount": invoice.total_amount,
-                "status": "processed"
+                "status": audit_result["status"],
+                # New Phase 3 Data
+                "category": invoice.category.value,
+                "compliance_flags": audit_result["flags"]
             }
             
             # Only add optional fields if they have non-null values
@@ -121,14 +128,21 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
             
             CONVEX_CLIENT.mutation("invoices:add", mutation_args)
 
-            # 3. Respond
+            # 4. Respond with "CA" Insights
+            status_icon = "✅" if audit_result["status"] == "compliant" else "⚠️"
             reply_text = (
-                f"✅ **Invoice Saved!**\n"
+                f"{status_icon} **Analysis Complete**\n"
                 f"🏢 Vendor: {invoice.vendor_name}\n"
                 f"💰 Amount: ₹{invoice.total_amount}\n"
-                f"📅 Date: {invoice.date or 'Not found'}\n"
-                f"🧾 GSTIN: {invoice.gstin or 'N/A'}"
+                f"📂 Category: {invoice.category.value}\n"
+                f"🧾 GSTIN: {invoice.gstin or 'N/A'}\n"
             )
+            
+            if audit_result["flags"]:
+                reply_text += "\n**Compliance Notes:**\n"
+                for flag in audit_result["flags"]:
+                    reply_text += f"• {flag}\n"
+            
             await msg.reply_text(reply_text, parse_mode="Markdown")
 
         except Exception as ai_error:

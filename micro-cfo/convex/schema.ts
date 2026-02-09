@@ -20,6 +20,9 @@ export default defineSchema({
         amount: v.number(),
         gstin: v.optional(v.string()), // Optional fields
         date: v.optional(v.string()),
+        // New Phase 3 Fields
+        category: v.optional(v.string()),
+        compliance_flags: v.optional(v.array(v.string())),
         status: v.string(),
         timestamp: v.string(),
     }),

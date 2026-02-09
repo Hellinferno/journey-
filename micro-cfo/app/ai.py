@@ -40,8 +40,17 @@ def analyze_invoice(image_path: str) -> InvoiceData:
 
     try:
         with Image.open(image_path) as img:
+            # Updated Prompt for Phase 3
             prompt = """
-            Extract data from this Indian invoice in strict JSON:
+            Extract data from this Indian invoice in strict JSON.
+            Analyze the items to determine the 'category':
+            [Office Supplies, Travel, Food & Beverage, Electronics, Professional Fees, Utilities, Rent, Other]
+            
+            CRITICAL:
+            - If items are food/drinks, set category to "Food & Beverage".
+            - If items are laptops/phones, set category to "Electronics".
+            
+            JSON Structure:
             {
                 "vendor_name": "string",
                 "invoice_number": "string or null",
@@ -49,7 +58,9 @@ def analyze_invoice(image_path: str) -> InvoiceData:
                 "total_amount": float,
                 "tax_amount": float,
                 "gstin": "string or null",
-                "currency": "string"
+                "currency": "string",
+                "category": "string",
+                "item_description": "short summary string"
             }
             """
             
