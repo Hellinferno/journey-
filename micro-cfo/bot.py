@@ -105,14 +105,21 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
             invoice = analyze_invoice(local_path)
             
             # 2. Save to Convex
-            CONVEX_CLIENT.mutation("invoices:add", {
+            # Build mutation args, only include optional fields if they have values
+            mutation_args = {
                 "telegram_id": str(chat_id),
                 "vendor": invoice.vendor_name,
                 "amount": invoice.total_amount,
-                "gstin": invoice.gstin,
-                "date": invoice.date if invoice.date else None,
                 "status": "processed"
-            })
+            }
+            
+            # Only add optional fields if they have non-null values
+            if invoice.gstin:
+                mutation_args["gstin"] = invoice.gstin
+            if invoice.date:
+                mutation_args["date"] = invoice.date
+            
+            CONVEX_CLIENT.mutation("invoices:add", mutation_args)
 
             # 3. Respond
             reply_text = (
