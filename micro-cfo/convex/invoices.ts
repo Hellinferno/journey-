@@ -12,12 +12,7 @@ export const add = mutation({
     },
     handler: async (ctx, args) => {
         await ctx.db.insert("invoices", {
-            telegram_id: args.telegram_id,
-            vendor: args.vendor,
-            amount: args.amount,
-            gstin: args.gstin,
-            date: args.date,
-            status: args.status,
+            ...args,
             timestamp: new Date().toISOString(),
         });
     },
