@@ -13,14 +13,37 @@ load_dotenv()
 if os.getenv("GOOGLE_API_KEY"):
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-# Configure Tesseract Path (Windows default)
-import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+import re
+import shutil
+
+# Try to find Tesseract in PATH if not already configured
+if not shutil.which("tesseract"):
+    # Fallback to common Windows path only if not found in PATH
+    default_path = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    if os.path.exists(default_path):
+        pytesseract.pytesseract.tesseract_cmd = default_path
+
+def clean_json_text(text: str) -> str:
+    """Robustly extracts JSON object from any AI response text."""
+    # 1. Strip markdown code blocks
+    text = re.sub(r"```(json)?", "", text).replace("```", "").strip()
+    
+    # 2. Find the actual JSON object (start at first '{', end at last '}')
+    start = text.find("{")
+    end = text.rfind("}")
+    
+    if start != -1 and end != -1:
+        return text[start:end+1]
+    return text
 
 def extract_text_with_tesseract(image_path: str) -> str:
     """Fallback: Extract text using local Tesseract OCR."""
     print("Falling back to Tesseract OCR...")
     try:
+        # Check if tesseract is actually available before trying
+        if not shutil.which("tesseract") and not os.path.exists(pytesseract.pytesseract.tesseract_cmd):
+            raise FileNotFoundError("Tesseract not found in PATH or default location.")
+            
         return pytesseract.image_to_string(Image.open(image_path))
     except Exception as e:
         print(f"Tesseract Error: {e}")
@@ -144,19 +167,14 @@ def analyze_invoice(image_path: str) -> InvoiceData:
                 if not response:
                     raise Exception(f"All fallback text models failed. Last error: {text_error}")
 
-        # 6. Parse Response
-        
         # 6. Parse Response (Outside 'with' block to ensure file is closed)
         try:
-            # Clean possible markdown wrap
-            raw_text = response.text.strip()
-            if raw_text.startswith("```"):
-                raw_text = raw_text.split("```")[1]
-                if raw_text.startswith("json"):
-                    raw_text = raw_text[4:]
-            raw_text = raw_text.strip("` \n")
-            
-            json_data = json.loads(raw_text)
+            # Robust Parsing
+            raw_response = response.text
+            clean_text = clean_json_text(raw_response)
+            print(f"📥 Parsed JSON: {clean_text}")
+
+            json_data = json.loads(clean_text)
             invoice = InvoiceData(**json_data)
             return invoice
         except Exception as parse_error:
