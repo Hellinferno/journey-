@@ -4,5 +4,12 @@ __pycache__/
 .env.local
 .venv/
 venv/
-bot_debug.log
+*.log
+.agents/
 temp_*
+*.txt
+*.bat
+!requirements.txt
+!.env.example
+!README.md
+!start_bot.bat
