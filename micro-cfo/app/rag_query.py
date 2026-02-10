@@ -18,7 +18,7 @@ class RAGQueryEngine:
             api_key: Google API key for embeddings
         """
         self.client = genai.Client(api_key=api_key)
-        self.embedding_model = "models/text-embedding-004"
+        self.embedding_model = "models/gemini-embedding-001"
 
     
     def generate_search_query(self, invoice: InvoiceData) -> str:
@@ -64,7 +64,7 @@ class RAGQueryEngine:
             query: Search query text
             
         Returns:
-            768-dimensional embedding vector
+            3072-dimensional embedding vector
         """
         result = self.client.models.embed_content(
             model=self.embedding_model,

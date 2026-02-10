@@ -4,6 +4,7 @@ Processes legal PDFs and stores chunks with embeddings in Convex
 """
 import os
 import time
+import json
 from typing import List, Dict
 from pypdf import PdfReader
 from google import genai
@@ -14,19 +15,53 @@ from dotenv import load_dotenv
 class PDFIngestionPipeline:
     """Pipeline for ingesting PDF documents into the RAG knowledge base"""
     
-    def __init__(self, convex_url: str, api_key: str):
+    def __init__(self, convex_url: str, api_key: str, progress_file: str = "ingestion_progress.json"):
         """
         Initialize the ingestion pipeline
         
         Args:
             convex_url: Convex deployment URL
             api_key: Google API key for embeddings
+            progress_file: File to track ingestion progress
         """
         self.convex = ConvexClient(convex_url)
         self.client = genai.Client(api_key=api_key)
-        self.embedding_model = "text-embedding-004"
+        self.embedding_model = "models/gemini-embedding-001"
         self.chunk_size = 1000
         self.overlap = 100
+        self.progress_file = progress_file
+        self.requests_per_minute = 90  # Stay under 100/min limit
+        self.request_count = 0
+        self.minute_start = time.time()
+
+    
+    def load_progress(self) -> Dict:
+        """Load progress from file"""
+        if os.path.exists(self.progress_file):
+            with open(self.progress_file, 'r') as f:
+                return json.load(f)
+        return {}
+    
+    def save_progress(self, progress: Dict):
+        """Save progress to file"""
+        with open(self.progress_file, 'w') as f:
+            json.dump(progress, f, indent=2)
+    
+    def rate_limit(self):
+        """Implement rate limiting to stay under 100 requests/minute"""
+        self.request_count += 1
+        
+        # Check if we've hit the per-minute limit
+        if self.request_count >= self.requests_per_minute:
+            elapsed = time.time() - self.minute_start
+            if elapsed < 60:
+                sleep_time = 60 - elapsed
+                print(f"\n[RATE LIMIT] Sleeping for {sleep_time:.1f}s to respect API limits...")
+                time.sleep(sleep_time)
+            
+            # Reset counter
+            self.request_count = 0
+            self.minute_start = time.time()
 
     
     def process_pdf(self, pdf_path: str, category: str) -> List[Dict]:
@@ -96,15 +131,17 @@ class PDFIngestionPipeline:
     
     def generate_embedding(self, text: str, retries: int = 3) -> List[float]:
         """
-        Generate embedding with retry logic
+        Generate embedding with retry logic and rate limiting
         
         Args:
             text: Text to embed
             retries: Number of retry attempts
             
         Returns:
-            768-dimensional embedding vector
+            3072-dimensional embedding vector
         """
+        self.rate_limit()
+        
         for attempt in range(retries):
             try:
                 result = self.client.models.embed_content(
@@ -113,6 +150,12 @@ class PDFIngestionPipeline:
                 )
                 return result.embeddings[0].values
             except Exception as e:
+                error_str = str(e)
+                # Check if it's a quota error
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    print(f"\n[QUOTA ERROR] Daily quota exceeded. Please retry tomorrow.")
+                    raise e
+                
                 if attempt == retries - 1:
                     raise e
                 # Exponential backoff
@@ -121,22 +164,28 @@ class PDFIngestionPipeline:
     
     def ingest_document(self, pdf_path: str, category: str):
         """
-        Complete ingestion pipeline for one PDF
+        Complete ingestion pipeline for one PDF with progress tracking
         
         Args:
             pdf_path: Path to PDF file
             category: Document category ("GST" or "Income_Tax")
         """
-        print(f"\n📘 Processing {pdf_path}...")
+        print(f"\n[PROCESSING] {pdf_path}...")
         source_file = os.path.basename(pdf_path)
+        
+        # Load progress
+        progress = self.load_progress()
+        processed_chunks = progress.get(source_file, 0)
         
         # Extract and chunk
         chunks = self.process_pdf(pdf_path, category)
-        print(f"Created {len(chunks)} chunks")
+        total_chunks = len(chunks)
+        print(f"Created {total_chunks} chunks (resuming from chunk {processed_chunks + 1})")
         
         # Generate embeddings and store
-        for i, chunk in enumerate(chunks):
-            print(f"Processing chunk {i+1}/{len(chunks)}...", end="\r")
+        for i in range(processed_chunks, total_chunks):
+            chunk = chunks[i]
+            print(f"Processing chunk {i+1}/{total_chunks}...", end="\r")
             
             try:
                 embedding = self.generate_embedding(chunk["text"])
@@ -148,11 +197,26 @@ class PDFIngestionPipeline:
                     "category": category,
                     "embedding": embedding,
                 })
+                
+                # Update progress
+                progress[source_file] = i + 1
+                self.save_progress(progress)
+                
             except Exception as e:
-                print(f"\n⚠️ Error processing chunk {i+1}: {e}")
+                error_str = str(e)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    print(f"\n[QUOTA EXCEEDED] Processed {i}/{total_chunks} chunks")
+                    print(f"Progress saved. Run script again tomorrow to continue from chunk {i+1}")
+                    return
+                
+                print(f"\n[ERROR] Error processing chunk {i+1}: {e}")
                 continue
         
-        print(f"\n✅ Completed {source_file}")
+        print(f"\n[COMPLETED] {source_file}")
+        # Clear progress for this file
+        if source_file in progress:
+            del progress[source_file]
+            self.save_progress(progress)
 
 
 
@@ -180,7 +244,7 @@ def main():
     pipeline.ingest_document(pdf1_path, "GST")
     pipeline.ingest_document(pdf2_path, "Income_Tax")
     
-    print("\n🎉 All documents ingested successfully!")
+    print("\n[SUCCESS] All documents ingested successfully!")
 
 
 if __name__ == "__main__":

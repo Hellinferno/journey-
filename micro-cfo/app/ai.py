@@ -1,3 +1,7 @@
+"""
+AI Invoice Analyzer
+Uses Google Gemini to extract invoice data from images
+"""
 import google.generativeai as genai
 import os
 import json
@@ -8,16 +12,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 1. Configure API
+# Configure Gemini API
 if os.getenv("GOOGLE_API_KEY"):
     genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
+
 def clean_json_text(text: str) -> str:
-    """Robustly extracts JSON object from AI response."""
-    # Remove markdown code blocks like ```json ... ```
+    """Extract JSON object from AI response"""
+    # Remove markdown code blocks
     text = re.sub(r"```(json)?", "", text).replace("```", "").strip()
     
-    # 2. Find the actual JSON object (start at first '{', end at last '}')
+    # Find JSON object boundaries
     start = text.find("{")
     end = text.rfind("}")
     
@@ -25,11 +30,17 @@ def clean_json_text(text: str) -> str:
         return text[start:end+1]
     return text
 
+
 def analyze_invoice(image_path: str) -> InvoiceData:
     """
-    Sends image to Gemini 2.5 Flash (current stable version).
+    Analyze invoice image using Gemini 2.5 Flash
+    
+    Args:
+        image_path: Path to invoice image file
+        
+    Returns:
+        InvoiceData object with extracted information
     """
-    # 3. Use ONLY the single working model
     model = genai.GenerativeModel(
         model_name="gemini-2.5-flash",
         generation_config={
@@ -40,15 +51,16 @@ def analyze_invoice(image_path: str) -> InvoiceData:
 
     try:
         with Image.open(image_path) as img:
-            # Updated Prompt for Phase 3
             prompt = """
-            Extract data from this Indian invoice in strict JSON.
-            Analyze the items to determine the 'category':
-            [Office Supplies, Travel, Food & Beverage, Electronics, Professional Fees, Utilities, Rent, Other]
+            Extract data from this Indian invoice in strict JSON format.
+            Analyze the items to determine the appropriate category.
+            
+            Categories: [Office Supplies, Travel, Food & Beverage, Electronics, 
+                        Professional Fees, Utilities, Rent, Other]
             
             CRITICAL:
-            - If items are food/drinks, set category to "Food & Beverage".
-            - If items are laptops/phones, set category to "Electronics".
+            - If items are food/drinks, set category to "Food & Beverage"
+            - If items are laptops/phones, set category to "Electronics"
             
             JSON Structure:
             {
@@ -67,7 +79,7 @@ def analyze_invoice(image_path: str) -> InvoiceData:
             print("📤 Sending to Gemini 2.5 Flash...")
             response = model.generate_content([prompt, img])
             
-            # 4. Clean and Parse
+            # Clean and parse response
             clean_text = clean_json_text(response.text)
             print(f"📥 Parsed: {clean_text}")
 

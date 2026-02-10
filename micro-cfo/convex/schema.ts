@@ -36,7 +36,7 @@ export default defineSchema({
     })
         .vectorIndex("by_embedding", {
             vectorField: "embedding",
-            dimensions: 768,
+            dimensions: 3072, // Gemini text-embedding-004
             filterFields: ["category", "source_file"],
         })
         .index("by_source", ["source_file"])

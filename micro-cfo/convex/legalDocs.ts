@@ -13,10 +13,10 @@ export const addLegalDocument = mutation({
     embedding: v.array(v.float64()),
   },
   handler: async (ctx, args) => {
-    // Validate embedding dimensions
-    if (args.embedding.length !== 768) {
+    // Validate embedding dimensions (Gemini text-embedding-004 uses 3072 dimensions)
+    if (args.embedding.length !== 3072) {
       throw new Error(
-        `Invalid embedding dimensions: expected 768, got ${args.embedding.length}`
+        `Invalid embedding dimensions: expected 3072, got ${args.embedding.length}`
       );
     }
 
@@ -34,28 +34,34 @@ export const searchLegalDocs = query({
     category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // TODO: Implement proper vector search once PDFs are ingested
+    // For now, return empty results to allow hard rules validation to work
+    // The system will gracefully fall back to hard rules only
+    
+    // Check if there are any documents in the database
+    const count = await ctx.db.query("legal_docs").take(1);
+    
+    if (count.length === 0) {
+      // No documents ingested yet, return empty array
+      return [];
+    }
+    
+    // If documents exist, return a simple query (not vector search yet)
+    // This is a temporary solution until vector search API is properly configured
     const limit = args.limit ?? 3;
-
-    // Build filter if category specified
-    const filter = args.category
-      ? (q: any) => q.eq("category", args.category)
-      : undefined;
-
     const results = await ctx.db
       .query("legal_docs")
-      .withSearchIndex("by_embedding", (q) =>
-        q
-          .similar("embedding", args.query_embedding, limit)
-          .filter(filter)
+      .filter((q) => 
+        args.category ? q.eq(q.field("category"), args.category) : true
       )
-      .collect();
+      .take(limit);
 
     return results.map((doc) => ({
       chunk_text: doc.chunk_text,
       source_file: doc.source_file,
       page_number: doc.page_number,
       category: doc.category,
-      score: doc._score, // Similarity score from vector search
+      score: 0, // Placeholder score
     }));
   },
 });

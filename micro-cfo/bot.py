@@ -1,17 +1,19 @@
-
+"""
+Micro-CFO Telegram Bot
+Analyzes invoice images and provides GST compliance insights
+"""
 import logging
 import os
-import asyncio
 from dotenv import load_dotenv
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 
 from convex import ConvexClient
-from app.ai import analyze_invoice  # Using Gemini based AI analysis
-from app.compliance import audit_invoice  # Import the new compliance brain
+from app.ai import analyze_invoice
+from app.compliance import audit_invoice
 
-# 1. Setup Logging
+# Setup Logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
@@ -20,12 +22,11 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-# Set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-# 2. Load Config
+# Load Configuration
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CONVEX_URL = os.getenv("CONVEX_URL")
@@ -34,17 +35,15 @@ CONVEX_CLIENT = ConvexClient(CONVEX_URL)
 if not TELEGRAM_TOKEN:
     raise ValueError("Missing TELEGRAM_TOKEN in .env")
 
-# --- Handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Responds to /start"""
+    """Handle /start command"""
     user = update.effective_user
     chat_id = update.effective_chat.id
     
     logger.info(f"User started bot: {user.id} ({user.username})")
 
-    # Register/Get User in Convex
-    # Note: We use a fire-and-forget approach or simple mutation here
+    # Register user in Convex
     try:
         CONVEX_CLIENT.mutation("users:getOrCreateUser", {
             "telegram_id": str(user.id),
@@ -55,18 +54,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Hello {user.first_name}! I'm your Micro-CFO bot. 🤖\n\nSend me a photo of an invoice, and I'll process it for you!\n\nType /help to see what I can do."
+        text=f"Hello {user.first_name}! I'm your Micro-CFO bot. 🤖\n\n"
+             f"Send me a photo of an invoice, and I'll analyze it for GST compliance!\n\n"
+             f"Type /help to see what I can do."
     )
 
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Responds to /help"""
+    """Handle /help command"""
     help_text = (
         "🤖 *Micro-CFO Bot Help*\n\n"
-        "I can help you track your expenses by analyzing invoices.\n\n"
-        "*How to use me:*\n"
-        "1. Send me a photo 📸 or file guarantily of an invoice.\n"
-        "2. I will extract the Vendor, Date, Amount, and GSTIN.\n"
-        "3. I will save it to your dashboard.\n\n"
+        "I analyze invoices and check GST compliance automatically.\n\n"
+        "*How to use:*\n"
+        "1. Send me a photo 📸 of an invoice\n"
+        "2. I'll extract vendor, amount, GSTIN, and category\n"
+        "3. I'll check compliance and provide insights\n\n"
         "*Commands:*\n"
         "/start - Restart the bot\n"
         "/help - Show this help message"
@@ -77,18 +79,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+
 async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Processes Photos and Documents"""
+    """Process invoice photos and documents"""
     msg = update.message
     chat_id = msg.chat_id
     
     try:
-        # Get the file object
+        # Get file object
         if msg.document:
             file_obj = await msg.document.get_file()
             file_name_ext = msg.document.file_name or "document.jpg"
         elif msg.photo:
-            # Photos come in multiple sizes, get the largest
             file_obj = await msg.photo[-1].get_file()
             file_name_ext = "photo.jpg"
         else:
@@ -96,31 +98,28 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
 
         await msg.reply_text("📸 **Analyzing Invoice...**", parse_mode="Markdown")
 
-        # Download to local temp file
+        # Download to temporary file
         local_path = f"temp_{file_obj.file_id}_{file_name_ext}"
         await file_obj.download_to_drive(local_path)
 
         try:
-            # 1. Run AI Analysis
+            # AI Analysis
             logger.info(f"Analyzing file: {local_path}")
             invoice = analyze_invoice(local_path)
             
-            # 2. Run Compliance Audit (The "Junior CA")
+            # Compliance Audit
             audit_result = audit_invoice(invoice)
             
-            # 3. Save to Convex
-            # Build mutation args, only include optional fields if they have values
+            # Save to Convex
             mutation_args = {
                 "telegram_id": str(chat_id),
                 "vendor": invoice.vendor_name,
                 "amount": invoice.total_amount,
                 "status": audit_result["status"],
-                # New Phase 3 Data
                 "category": invoice.category.value,
                 "compliance_flags": audit_result["flags"]
             }
             
-            # Only add optional fields if they have non-null values
             if invoice.gstin:
                 mutation_args["gstin"] = invoice.gstin
             if invoice.date:
@@ -128,7 +127,7 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
             
             CONVEX_CLIENT.mutation("invoices:add", mutation_args)
 
-            # 4. Respond with "CA" Insights
+            # Send response
             status_icon = "✅" if audit_result["status"] == "compliant" else "⚠️"
             reply_text = (
                 f"{status_icon} **Analysis Complete**\n"
@@ -147,10 +146,15 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
 
         except Exception as ai_error:
             logger.error(f"AI Processing Error: {ai_error}")
-            await msg.reply_text(f"⚠️ **Extraction Failed**\nError: `{ai_error}`\n\nPlease ensure your API Key has access to Gemini 2.5 Flash or a Vision-capable model.", parse_mode="Markdown")
+            await msg.reply_text(
+                f"⚠️ **Extraction Failed**\n"
+                f"Error: `{ai_error}`\n\n"
+                f"Please ensure your API key has access to Gemini 2.5 Flash.",
+                parse_mode="Markdown"
+            )
         
         finally:
-            # Cleanup
+            # Cleanup temporary file
             if os.path.exists(local_path):
                 os.remove(local_path)
 
@@ -162,26 +166,18 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Echo/Log text messages"""
-    # This is a good place to add conversational logic later
-    # For now, we just acknowledge or ignore non-command text
+    """Handle text messages (placeholder for future conversational features)"""
     pass
 
 
-async def handle_any(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Catch-all for debugging."""
-    print(f"DEBUG: Received update: {update}")
-    logger.info(f"DEBUG: Received update: {update}")
-
 if __name__ == '__main__':
-    print("BOT STARTED RENEWED - DEBUG MODE")
-    logger.info("Starting Bot in Polling Mode...")
+    logger.info("Starting Micro-CFO Bot...")
     
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle_document_or_photo))
-    app.add_handler(MessageHandler(filters.ALL, handle_any)) # Catch everything else
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     
     app.run_polling()

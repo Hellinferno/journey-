@@ -1,3 +1,7 @@
+"""
+Hard Rules Validator
+Validates invoices against GST and Income Tax regulations
+"""
 import re
 from app.schemas import InvoiceData, ExpenseCategory
 from typing import List
@@ -5,7 +9,7 @@ from typing import List
 
 def validate_gstin(gstin: str) -> bool:
     """
-    Validate GSTIN format: 15 chars, specific pattern
+    Validate GSTIN format
     Pattern: [0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}
     
     Args:
@@ -19,7 +23,6 @@ def validate_gstin(gstin: str) -> bool:
     
     pattern = r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$'
     return bool(re.match(pattern, gstin))
-
 
 
 def validate_gst_rate(total: float, tax: float) -> bool:
@@ -56,8 +59,7 @@ def check_cash_limit(amount: float, payment_method: str = None) -> List[str]:
     """
     flags = []
     
-    # For now, we warn on all high-value transactions
-    # In production, would check actual payment method
+    # Warn on high-value transactions (in production, check actual payment method)
     if amount > 10000:
         flags.append("⚠️ Section 40A(3): Cash payments > ₹10,000 are disallowed")
     
@@ -115,7 +117,7 @@ class HardRulesValidator:
         Args:
             invoice: Invoice data to validate
             
-        Returns:
+    Returns:
             Dictionary with status and flags
         """
         flags = []
@@ -148,4 +150,3 @@ class HardRulesValidator:
             "status": status,
             "flags": flags,
         }
-

@@ -1,15 +1,59 @@
+# Python
 __pycache__/
 *.py[cod]
-.env
-.env.local
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
 .venv/
 venv/
+ENV/
+env/
+
+# Environment Variables
+.env
+.env.local
+
+# Logs
 *.log
-.agents/
+bot_debug.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Temporary Files
 temp_*
-*.txt
+*.tmp
+*.bak
+
+# Node (for Convex)
+node_modules/
+.DS_Store
+
+# Batch Files (except start_bot.bat)
 *.bat
+!start_bot.bat
+
+# Documentation (keep only README)
+*.txt
 !requirements.txt
 !.env.example
-!README.md
-!start_bot.bat
+
+# Ingestion Progress
+ingestion_progress.json

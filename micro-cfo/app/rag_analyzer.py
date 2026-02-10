@@ -19,7 +19,7 @@ class AIComplianceAnalyzer:
             api_key: Google API key
         """
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.0-flash-exp"
+        self.model_name = "gemini-2.5-flash"
 
     
     def analyze_compliance(self, invoice: InvoiceData, legal_context: str) -> Dict:
