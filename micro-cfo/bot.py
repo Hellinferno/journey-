@@ -128,7 +128,13 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
             CONVEX_CLIENT.mutation("invoices:add", mutation_args)
 
             # Send response
-            status_icon = "✅" if audit_result["status"] == "compliant" else "⚠️"
+            status_icons = {
+                "compliant": "✅",
+                "review_needed": "⚠️",
+                "blocked": "🚫"
+            }
+            status_icon = status_icons.get(audit_result["status"], "⚠️")
+            
             reply_text = (
                 f"{status_icon} **Analysis Complete**\n"
                 f"🏢 Vendor: {invoice.vendor_name}\n"
@@ -141,6 +147,12 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
                 reply_text += "\n**Compliance Notes:**\n"
                 for flag in audit_result["flags"]:
                     reply_text += f"• {flag}\n"
+            
+            # Add citations if available
+            if audit_result.get("citations"):
+                reply_text += "\n**Legal References:**\n"
+                for citation in audit_result["citations"]:
+                    reply_text += f"📄 {citation['source']}, Page {citation['page']}\n"
             
             await msg.reply_text(reply_text, parse_mode="Markdown")
 
