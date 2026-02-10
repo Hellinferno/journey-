@@ -1,0 +1,27 @@
+﻿
+> dashboard@0.1.0 lint
+> eslint
+
+
+D:\journey\dashboard\convex\_generated\api.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+D:\journey\dashboard\convex\_generated\dataModel.d.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+D:\journey\dashboard\convex\_generated\server.d.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+D:\journey\dashboard\convex\_generated\server.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+D:\journey\dashboard\convex\users.ts
+  1:20  warning  'query' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\journey\dashboard\src\app\page.tsx
+   9:33  warning  'CheckCircle' is defined but never used   @typescript-eslint/no-unused-vars
+  26:46  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 7 problems (1 error, 6 warnings)
+  0 errors and 4 warnings potentially fixable with the `--fix` option.
+

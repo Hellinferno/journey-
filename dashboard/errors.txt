@@ -1,0 +1,39 @@
+convex/legalDocs.test.ts(6,38): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+convex/legalDocs.test.ts(7,21): error TS2307: Cannot find module 'fast-check' or its corresponding type declarations.
+convex/legalDocs.test.ts(37,12): error TS7006: Parameter 'embedding' implicitly has an 'any' type.
+convex/legalDocs.test.ts(50,51): error TS7006: Parameter 'length' implicitly has an 'any' type.
+convex/legalDocs.test.ts(56,13): error TS7031: Binding element 'length' implicitly has an 'any' type.
+convex/legalDocs.test.ts(56,21): error TS7031: Binding element 'embedding' implicitly has an 'any' type.
+convex/legalDocs.test.ts(71,54): error TS7006: Parameter 'length' implicitly has an 'any' type.
+convex/legalDocs.test.ts(77,13): error TS7031: Binding element 'length' implicitly has an 'any' type.
+convex/legalDocs.test.ts(77,21): error TS7031: Binding element 'embedding' implicitly has an 'any' type.
+convex/legalDocs.test.ts(110,12): error TS7006: Parameter 'embedding' implicitly has an 'any' type.
+convex/legalDocs.test.ts(152,12): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+convex/legalDocs.test.ts(170,12): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+convex/legalDocs.test.ts(186,12): error TS7006: Parameter 'score' implicitly has an 'any' type.
+convex/legalDocs.test.ts(204,13): error TS7031: Binding element 'score' implicitly has an 'any' type.
+convex/legalDocs.test.ts(204,20): error TS7031: Binding element 'count' implicitly has an 'any' type.
+convex/legalDocs.test.ts(229,12): error TS7006: Parameter 'scores' implicitly has an 'any' type.
+src/app/page.tsx(12,42): error TS2339: Property 'get' does not exist on type '{ add: FunctionReference<"mutation", "public", { gstin?: string | undefined; date?: string | undefined; category?: string | undefined; compliance_flags?: string[] | undefined; telegram_id: string; vendor: string; amount: number; status: string; }, null, string | undefined>; }'.
+src/app/page.tsx(15,39): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/app/page.tsx(15,44): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+src/app/page.tsx(16,40): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/page.tsx(17,42): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/page.tsx(18,39): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/page.tsx(22,13): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/page.tsx(23,14): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/app/page.tsx(23,19): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+src/app/page.tsx(26,96): error TS7006: Parameter 'curr' implicitly has an 'any' type.
+src/app/page.tsx(39,16): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/app/page.tsx(39,19): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/app/page.tsx(199,46): error TS7006: Parameter 'inv' implicitly has an 'any' type.
+src/app/page.tsx(199,51): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+src/app/page.tsx(260,42): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/app/page.tsx(260,49): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/app/page.tsx(265,23): error TS2322: Type '(value: number) => string' is not assignable to type 'Formatter<number, NameType> & ((value: number, name: NameType, item: Payload<number, NameType>, index: number, payload: Payload<number, NameType>[]) => ReactNode | [...])'.
+  Type '(value: number) => string' is not assignable to type 'Formatter<number, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/app/page.tsx(278,50): error TS7006: Parameter 'cat' implicitly has an 'any' type.
+src/app/page.tsx(278,55): error TS7006: Parameter 'i' implicitly has an 'any' type.
