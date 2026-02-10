@@ -11,9 +11,9 @@ import * as fc from 'fast-check';
  * This tests the core validation without requiring a full Convex environment
  */
 function validateEmbeddingDimensions(embedding: number[]): void {
-  if (embedding.length !== 768) {
+  if (embedding.length !== 3072) {
     throw new Error(
-      `Invalid embedding dimensions: expected 768, got ${embedding.length}`
+      `Invalid embedding dimensions: expected 3072, got ${embedding.length}`
     );
   }
 }
@@ -23,17 +23,17 @@ describe('Legal Documents - Property-Based Tests', () => {
    * Property 1: Embedding Dimension Consistency
    * 
    * For any text chunk or query processed by the system, the generated embedding 
-   * SHALL have exactly 768 dimensions, and any attempt to store an embedding with 
-   * a different dimension count SHALL be rejected.
+   * SHALL have exactly 3072 dimensions (gemini-embedding-001), and any attempt to 
+   * store an embedding with a different dimension count SHALL be rejected.
    * 
    * Validates: Requirements 1.2, 2.5, 4.3
    */
   describe('Property 1: Embedding Dimension Consistency', () => {
-    it('should accept embeddings with exactly 768 dimensions', () => {
+    it('should accept embeddings with exactly 3072 dimensions', () => {
       fc.assert(
         fc.property(
-          // Generate an array of exactly 768 float64 values
-          fc.array(fc.double(), { minLength: 768, maxLength: 768 }),
+          // Generate an array of exactly 3072 float64 values
+          fc.array(fc.double(), { minLength: 3072, maxLength: 3072 }),
           (embedding) => {
             // This should not throw an error
             expect(() => validateEmbeddingDimensions(embedding)).not.toThrow();
@@ -43,11 +43,11 @@ describe('Legal Documents - Property-Based Tests', () => {
       );
     });
 
-    it('should reject embeddings with fewer than 768 dimensions', () => {
+    it('should reject embeddings with fewer than 3072 dimensions', () => {
       fc.assert(
         fc.property(
-          // Generate arrays with 0 to 767 dimensions
-          fc.integer({ min: 0, max: 767 }).chain((length) =>
+          // Generate arrays with 0 to 3071 dimensions (sample range for performance)
+          fc.integer({ min: 0, max: 3071 }).chain((length) =>
             fc.tuple(
               fc.constant(length),
               fc.array(fc.double(), { minLength: length, maxLength: length })
@@ -56,7 +56,7 @@ describe('Legal Documents - Property-Based Tests', () => {
           ([length, embedding]) => {
             // This should throw an error
             expect(() => validateEmbeddingDimensions(embedding)).toThrow(
-              `Invalid embedding dimensions: expected 768, got ${length}`
+              `Invalid embedding dimensions: expected 3072, got ${length}`
             );
           }
         ),
@@ -64,11 +64,11 @@ describe('Legal Documents - Property-Based Tests', () => {
       );
     });
 
-    it('should reject embeddings with more than 768 dimensions', () => {
+    it('should reject embeddings with more than 3072 dimensions', () => {
       fc.assert(
         fc.property(
-          // Generate arrays with 769 to 1000 dimensions
-          fc.integer({ min: 769, max: 1000 }).chain((length) =>
+          // Generate arrays with 3073 to 4000 dimensions
+          fc.integer({ min: 3073, max: 4000 }).chain((length) =>
             fc.tuple(
               fc.constant(length),
               fc.array(fc.double(), { minLength: length, maxLength: length })
@@ -77,7 +77,7 @@ describe('Legal Documents - Property-Based Tests', () => {
           ([length, embedding]) => {
             // This should throw an error
             expect(() => validateEmbeddingDimensions(embedding)).toThrow(
-              `Invalid embedding dimensions: expected 768, got ${length}`
+              `Invalid embedding dimensions: expected 3072, got ${length}`
             );
           }
         ),
@@ -88,14 +88,14 @@ describe('Legal Documents - Property-Based Tests', () => {
     it('should reject empty embeddings', () => {
       const emptyEmbedding: number[] = [];
       expect(() => validateEmbeddingDimensions(emptyEmbedding)).toThrow(
-        'Invalid embedding dimensions: expected 768, got 0'
+        'Invalid embedding dimensions: expected 3072, got 0'
       );
     });
 
     it('should validate dimension count regardless of embedding values', () => {
       fc.assert(
         fc.property(
-          // Generate 768-dimensional embeddings with various value ranges
+          // Generate 3072-dimensional embeddings with various value ranges
           fc.array(
             fc.oneof(
               fc.double({ min: -1, max: 1 }), // Normalized values
@@ -105,7 +105,7 @@ describe('Legal Documents - Property-Based Tests', () => {
               fc.constant(Infinity), // Edge case: Infinity
               fc.constant(-Infinity) // Edge case: -Infinity
             ),
-            { minLength: 768, maxLength: 768 }
+            { minLength: 3072, maxLength: 3072 }
           ),
           (embedding) => {
             // Dimension validation should pass regardless of values
@@ -271,8 +271,8 @@ describe('Legal Documents - Unit Tests', () => {
    * Requirements: 2.1, 2.5
    */
   describe('addLegalDocument', () => {
-    it('should accept valid document with 768-dimensional embedding', () => {
-      const validEmbedding = new Array(768).fill(0.5);
+    it('should accept valid document with 3072-dimensional embedding', () => {
+      const validEmbedding = new Array(3072).fill(0.5);
       const document = {
         chunk_text: 'Section 17(5) of the CGST Act blocks ITC on food and beverages.',
         source_file: 'a2017-12.pdf',
@@ -283,22 +283,30 @@ describe('Legal Documents - Unit Tests', () => {
 
       // Validate the embedding dimensions (simulating the mutation logic)
       expect(() => validateEmbeddingDimensions(document.embedding)).not.toThrow();
-      expect(document.embedding.length).toBe(768);
+      expect(document.embedding.length).toBe(3072);
     });
 
-    it('should reject document with 767-dimensional embedding', () => {
-      const invalidEmbedding = new Array(767).fill(0.5);
+    it('should reject document with 3071-dimensional embedding', () => {
+      const invalidEmbedding = new Array(3071).fill(0.5);
       
       expect(() => validateEmbeddingDimensions(invalidEmbedding)).toThrow(
-        'Invalid embedding dimensions: expected 768, got 767'
+        'Invalid embedding dimensions: expected 3072, got 3071'
       );
     });
 
-    it('should reject document with 769-dimensional embedding', () => {
-      const invalidEmbedding = new Array(769).fill(0.5);
+    it('should reject document with 3073-dimensional embedding', () => {
+      const invalidEmbedding = new Array(3073).fill(0.5);
       
       expect(() => validateEmbeddingDimensions(invalidEmbedding)).toThrow(
-        'Invalid embedding dimensions: expected 768, got 769'
+        'Invalid embedding dimensions: expected 3072, got 3073'
+      );
+    });
+
+    it('should reject document with 768-dimensional embedding (old model)', () => {
+      const invalidEmbedding = new Array(768).fill(0.5);
+      
+      expect(() => validateEmbeddingDimensions(invalidEmbedding)).toThrow(
+        'Invalid embedding dimensions: expected 3072, got 768'
       );
     });
 
@@ -306,13 +314,13 @@ describe('Legal Documents - Unit Tests', () => {
       const emptyEmbedding: number[] = [];
       
       expect(() => validateEmbeddingDimensions(emptyEmbedding)).toThrow(
-        'Invalid embedding dimensions: expected 768, got 0'
+        'Invalid embedding dimensions: expected 3072, got 0'
       );
     });
 
     it('should accept document with normalized embedding values', () => {
       // Typical embedding values are normalized between -1 and 1
-      const normalizedEmbedding = new Array(768).fill(0).map((_, i) => 
+      const normalizedEmbedding = new Array(3072).fill(0).map((_, i) => 
         Math.sin(i * 0.01) // Generate values between -1 and 1
       );
       
@@ -320,7 +328,7 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should accept document with various valid metadata', () => {
-      const validEmbedding = new Array(768).fill(0.1);
+      const validEmbedding = new Array(3072).fill(0.1);
       
       const documents = [
         {
@@ -407,42 +415,42 @@ describe('Legal Documents - Unit Tests', () => {
     }
 
     it('should return top 3 results by default', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = [
         {
           chunk_text: 'Document 1',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.9), // High similarity
+          embedding: new Array(3072).fill(0.9), // High similarity
         },
         {
           chunk_text: 'Document 2',
           source_file: 'a2017-12.pdf',
           page_number: 2,
           category: 'GST',
-          embedding: new Array(768).fill(0.7), // Medium similarity
+          embedding: new Array(3072).fill(0.7), // Medium similarity
         },
         {
           chunk_text: 'Document 3',
           source_file: 'a2017-12.pdf',
           page_number: 3,
           category: 'GST',
-          embedding: new Array(768).fill(0.5), // Medium similarity
+          embedding: new Array(3072).fill(0.5), // Medium similarity
         },
         {
           chunk_text: 'Document 4',
           source_file: 'a2017-12.pdf',
           page_number: 4,
           category: 'GST',
-          embedding: new Array(768).fill(0.3), // Low similarity
+          embedding: new Array(3072).fill(0.3), // Low similarity
         },
         {
           chunk_text: 'Document 5',
           source_file: 'a2017-12.pdf',
           page_number: 5,
           category: 'GST',
-          embedding: new Array(768).fill(0.1), // Very low similarity
+          embedding: new Array(3072).fill(0.1), // Very low similarity
         },
       ];
 
@@ -455,13 +463,13 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should respect custom limit parameter', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = Array.from({ length: 10 }, (_, i) => ({
         chunk_text: `Document ${i + 1}`,
         source_file: 'a2017-12.pdf',
         page_number: i + 1,
         category: 'GST',
-        embedding: new Array(768).fill(0.5),
+        embedding: new Array(3072).fill(0.5),
       }));
 
       const results5 = mockVectorSearch(queryEmbedding, documents, 5);
@@ -475,35 +483,35 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should filter by category when specified', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = [
         {
           chunk_text: 'GST Document 1',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.9),
+          embedding: new Array(3072).fill(0.9),
         },
         {
           chunk_text: 'GST Document 2',
           source_file: 'a2017-12.pdf',
           page_number: 2,
           category: 'GST',
-          embedding: new Array(768).fill(0.8),
+          embedding: new Array(3072).fill(0.8),
         },
         {
           chunk_text: 'Income Tax Document 1',
           source_file: 'Income-tax-Act-2025.pdf',
           page_number: 1,
           category: 'Income_Tax',
-          embedding: new Array(768).fill(0.95), // Higher similarity but different category
+          embedding: new Array(3072).fill(0.95), // Higher similarity but different category
         },
         {
           chunk_text: 'Income Tax Document 2',
           source_file: 'Income-tax-Act-2025.pdf',
           page_number: 2,
           category: 'Income_Tax',
-          embedding: new Array(768).fill(0.85),
+          embedding: new Array(3072).fill(0.85),
         },
       ];
 
@@ -521,14 +529,14 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should return results with all required fields', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = [
         {
           chunk_text: 'Section 17(5) blocks ITC on food and beverages',
           source_file: 'a2017-12.pdf',
           page_number: 42,
           category: 'GST',
-          embedding: new Array(768).fill(0.8),
+          embedding: new Array(3072).fill(0.8),
         },
       ];
 
@@ -553,28 +561,28 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should return results ordered by similarity score descending', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = [
         {
           chunk_text: 'Low similarity',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.2),
+          embedding: new Array(3072).fill(0.2),
         },
         {
           chunk_text: 'High similarity',
           source_file: 'a2017-12.pdf',
           page_number: 2,
           category: 'GST',
-          embedding: new Array(768).fill(0.9),
+          embedding: new Array(3072).fill(0.9),
         },
         {
           chunk_text: 'Medium similarity',
           source_file: 'a2017-12.pdf',
           page_number: 3,
           category: 'GST',
-          embedding: new Array(768).fill(0.6),
+          embedding: new Array(3072).fill(0.6),
         },
       ];
 
@@ -591,14 +599,14 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should handle empty result set when no documents match category filter', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = [
         {
           chunk_text: 'GST Document',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.8),
+          embedding: new Array(3072).fill(0.8),
         },
       ];
 
@@ -609,10 +617,10 @@ describe('Legal Documents - Unit Tests', () => {
 
     it('should handle query with various embedding values', () => {
       const queryEmbeddings = [
-        new Array(768).fill(0), // All zeros
-        new Array(768).fill(1), // All ones
-        new Array(768).fill(0).map((_, i) => i % 2 === 0 ? 1 : 0), // Alternating
-        new Array(768).fill(0).map((_, i) => Math.sin(i * 0.1)), // Sine wave
+        new Array(3072).fill(0), // All zeros
+        new Array(3072).fill(1), // All ones
+        new Array(3072).fill(0).map((_, i) => i % 2 === 0 ? 1 : 0), // Alternating
+        new Array(3072).fill(0).map((_, i) => Math.sin(i * 0.1)), // Sine wave
       ];
 
       const documents = [
@@ -621,7 +629,7 @@ describe('Legal Documents - Unit Tests', () => {
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.5),
+          embedding: new Array(3072).fill(0.5),
         },
       ];
 
@@ -635,21 +643,21 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should return fewer results than limit if not enough documents exist', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const documents = [
         {
           chunk_text: 'Document 1',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.8),
+          embedding: new Array(3072).fill(0.8),
         },
         {
           chunk_text: 'Document 2',
           source_file: 'a2017-12.pdf',
           page_number: 2,
           category: 'GST',
-          embedding: new Array(768).fill(0.7),
+          embedding: new Array(3072).fill(0.7),
         },
       ];
 
@@ -665,28 +673,28 @@ describe('Legal Documents - Unit Tests', () => {
    */
   describe('searchLegalDocs - Category Filtering Integration', () => {
     it('should correctly filter GST documents from mixed collection', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const mixedDocuments = [
         {
           chunk_text: 'Section 17(5) of CGST Act',
           source_file: 'a2017-12.pdf',
           page_number: 42,
           category: 'GST',
-          embedding: new Array(768).fill(0.9),
+          embedding: new Array(3072).fill(0.9),
         },
         {
           chunk_text: 'Section 40A(3) of Income Tax Act',
           source_file: 'Income-tax-Act-2025.pdf',
           page_number: 150,
           category: 'Income_Tax',
-          embedding: new Array(768).fill(0.95), // Higher score but wrong category
+          embedding: new Array(3072).fill(0.95), // Higher score but wrong category
         },
         {
           chunk_text: 'GST rate structure',
           source_file: 'a2017-12.pdf',
           page_number: 10,
           category: 'GST',
-          embedding: new Array(768).fill(0.8),
+          embedding: new Array(3072).fill(0.8),
         },
       ];
 
@@ -735,28 +743,28 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should correctly filter Income_Tax documents from mixed collection', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const mixedDocuments = [
         {
           chunk_text: 'GST compliance rules',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.9),
+          embedding: new Array(3072).fill(0.9),
         },
         {
           chunk_text: 'Section 40A(3) cash limit',
           source_file: 'Income-tax-Act-2025.pdf',
           page_number: 150,
           category: 'Income_Tax',
-          embedding: new Array(768).fill(0.85),
+          embedding: new Array(3072).fill(0.85),
         },
         {
           chunk_text: 'TDS provisions',
           source_file: 'Income-tax-Act-2025.pdf',
           page_number: 200,
           category: 'Income_Tax',
-          embedding: new Array(768).fill(0.8),
+          embedding: new Array(3072).fill(0.8),
         },
       ];
 
@@ -805,21 +813,21 @@ describe('Legal Documents - Unit Tests', () => {
     });
 
     it('should return all categories when no filter is specified', () => {
-      const queryEmbedding = new Array(768).fill(0.5);
+      const queryEmbedding = new Array(3072).fill(0.5);
       const mixedDocuments = [
         {
           chunk_text: 'GST Document',
           source_file: 'a2017-12.pdf',
           page_number: 1,
           category: 'GST',
-          embedding: new Array(768).fill(0.9),
+          embedding: new Array(3072).fill(0.9),
         },
         {
           chunk_text: 'Income Tax Document',
           source_file: 'Income-tax-Act-2025.pdf',
           page_number: 1,
           category: 'Income_Tax',
-          embedding: new Array(768).fill(0.85),
+          embedding: new Array(3072).fill(0.85),
         },
       ];
 

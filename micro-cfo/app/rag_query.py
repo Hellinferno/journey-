@@ -10,15 +10,18 @@ from google import genai
 class RAGQueryEngine:
     """Engine for generating queries and searching legal documents"""
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, search_limit: int = 3):
         """
         Initialize the RAG query engine
         
         Args:
             api_key: Google API key for embeddings
+            search_limit: Maximum number of search results (default: 3)
         """
         self.client = genai.Client(api_key=api_key)
-        self.embedding_model = "models/gemini-embedding-001"
+        self.embedding_model = "models/text-embedding-004"
+        self.search_limit = search_limit
+        self._embedding_cache = {}  # Cache for query embeddings
 
     
     def generate_search_query(self, invoice: InvoiceData) -> str:
@@ -58,33 +61,46 @@ class RAGQueryEngine:
     
     def generate_query_embedding(self, query: str) -> List[float]:
         """
-        Generate embedding for search query
+        Generate embedding for search query with caching
         
         Args:
             query: Search query text
             
         Returns:
-            3072-dimensional embedding vector
+            768-dimensional embedding vector
         """
+        # Check cache first
+        if query in self._embedding_cache:
+            return self._embedding_cache[query]
+        
+        # Generate new embedding
         result = self.client.models.embed_content(
             model=self.embedding_model,
             contents=query
         )
-        return result.embeddings[0].values
+        embedding = result.embeddings[0].values
+        
+        # Cache the result
+        self._embedding_cache[query] = embedding
+        
+        return embedding
     
     def search_legal_docs(self, convex_client, query_embedding: List[float], 
-                         limit: int = 3) -> List[Dict]:
+                         limit: int = None) -> List[Dict]:
         """
         Execute vector search and return results
         
         Args:
             convex_client: Convex client instance
             query_embedding: Query embedding vector
-            limit: Maximum number of results
+            limit: Maximum number of results (uses self.search_limit if None)
             
         Returns:
             List of search results
         """
+        if limit is None:
+            limit = self.search_limit
+            
         results = convex_client.query("legalDocs:searchLegalDocs", {
             "query_embedding": query_embedding,
             "limit": limit,

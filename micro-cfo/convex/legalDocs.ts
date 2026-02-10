@@ -26,6 +26,14 @@ export const addLegalDocument = mutation({
 
 /**
  * Search legal documents using vector similarity
+ * 
+ * Performs semantic search over legal document chunks using vector embeddings.
+ * Returns the most similar documents ordered by similarity score (descending).
+ * 
+ * @param query_embedding - 3072-dimensional embedding vector for the search query
+ * @param limit - Maximum number of results to return (default: 3)
+ * @param category - Optional filter by document category ("GST" or "Income_Tax")
+ * @returns Array of matching documents with similarity scores, ordered by relevance
  */
 export const searchLegalDocs = query({
   args: {
@@ -34,34 +42,38 @@ export const searchLegalDocs = query({
     category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // TODO: Implement proper vector search once PDFs are ingested
-    // For now, return empty results to allow hard rules validation to work
-    // The system will gracefully fall back to hard rules only
+    const limit = args.limit ?? 3;
     
-    // Check if there are any documents in the database
-    const count = await ctx.db.query("legal_docs").take(1);
-    
-    if (count.length === 0) {
-      // No documents ingested yet, return empty array
-      return [];
+    // Validate embedding dimensions
+    if (args.query_embedding.length !== 3072) {
+      throw new Error(
+        `Invalid query embedding dimensions: expected 3072, got ${args.query_embedding.length}`
+      );
     }
     
-    // If documents exist, return a simple query (not vector search yet)
-    // This is a temporary solution until vector search API is properly configured
-    const limit = args.limit ?? 3;
+    // Build the vector search query
     const results = await ctx.db
       .query("legal_docs")
-      .filter((q) => 
-        args.category ? q.eq(q.field("category"), args.category) : true
-      )
-      .take(limit);
-
+      .withSearchIndex("by_embedding", (q) => {
+        // Start with vector similarity search
+        let search = q.similar("embedding", args.query_embedding, limit);
+        
+        // Apply category filter if specified
+        if (args.category) {
+          search = search.filter((q) => q.eq("category", args.category));
+        }
+        
+        return search;
+      })
+      .collect();
+    
+    // Map results to include all required fields and similarity score
     return results.map((doc) => ({
       chunk_text: doc.chunk_text,
       source_file: doc.source_file,
       page_number: doc.page_number,
       category: doc.category,
-      score: 0, // Placeholder score
+      score: doc._score, // Similarity score from vector search
     }));
   },
 });

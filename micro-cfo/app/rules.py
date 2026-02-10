@@ -36,14 +36,29 @@ def validate_gst_rate(total: float, tax: float) -> bool:
     Returns:
         True if rate matches standard rates (5%, 12%, 18%, 28%) with 0.5% tolerance
     """
+    # Handle edge case: zero total amount
     if total == 0:
         return True
     
+    # Handle edge case: zero or negative tax amount
+    if tax <= 0:
+        return False
+    
+    # Handle edge case: tax >= total (invalid invoice or would cause division by zero)
+    if tax >= total:
+        return False
+    
+    # Calculate rate: tax / base_amount * 100
+    # where base_amount = total - tax
     rate = (tax / (total - tax)) * 100
     standard_rates = [5, 12, 18, 28]
     
-    # Allow 0.5% tolerance for rounding
-    return any(abs(rate - std_rate) < 0.5 for std_rate in standard_rates)
+    # Allow 0.5% tolerance for rounding (exclusive boundary)
+    # Rates must be strictly within 0.5% of a standard rate
+    # Use small epsilon to handle floating-point precision issues
+    # but ensure boundary at exactly 0.5% is still rejected
+    epsilon = 1e-10
+    return any(abs(rate - std_rate) < (0.5 - epsilon) for std_rate in standard_rates)
 
 
 def check_cash_limit(amount: float, payment_method: str = None) -> List[str]:

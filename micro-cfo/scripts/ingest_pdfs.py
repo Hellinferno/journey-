@@ -16,7 +16,10 @@ from dotenv import load_dotenv
 class PDFIngestionPipeline:
     """Pipeline for ingesting PDF documents into the RAG knowledge base"""
     
-    def __init__(self, convex_url: str, api_key: str, progress_file: str = "ingestion_progress.json"):
+    def __init__(self, convex_url: str, api_key: str, 
+                 progress_file: str = "ingestion_progress.json",
+                 chunk_size: int = 1000,
+                 overlap: int = 100):
         """
         Initialize the ingestion pipeline
         
@@ -24,12 +27,14 @@ class PDFIngestionPipeline:
             convex_url: Convex deployment URL
             api_key: Google API key for embeddings
             progress_file: File to track ingestion progress
+            chunk_size: Size of text chunks (default: 1000)
+            overlap: Overlap between chunks (default: 100)
         """
         self.convex = ConvexClient(convex_url)
         self.client = genai.Client(api_key=api_key)
-        self.embedding_model = "models/gemini-embedding-001"
-        self.chunk_size = 1000
-        self.overlap = 100
+        self.embedding_model = "models/text-embedding-004"
+        self.chunk_size = chunk_size
+        self.overlap = overlap
         self.progress_file = progress_file
         self.requests_per_minute = 90  # Stay under 100/min limit
         self.request_count = 0
@@ -138,7 +143,7 @@ class PDFIngestionPipeline:
             retries: Number of retry attempts
             
         Returns:
-            3072-dimensional embedding vector
+            768-dimensional embedding vector
         """
         self.rate_limit()
         
@@ -233,15 +238,31 @@ def main():
     if not convex_url or not api_key:
         raise ValueError("Missing required environment variables: CONVEX_URL and GOOGLE_API_KEY")
     
-    pipeline = PDFIngestionPipeline(convex_url, api_key)
+    # Get configurable parameters from environment (with defaults)
+    chunk_size = int(os.getenv("CHUNK_SIZE", "1000"))
+    overlap = int(os.getenv("CHUNK_OVERLAP", "100"))
+    pdfs_folder = os.getenv("PDFS_FOLDER", "")
     
-    # Get the parent directory (workspace root)
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    workspace_root = os.path.dirname(os.path.dirname(script_dir))
+    pipeline = PDFIngestionPipeline(
+        convex_url, 
+        api_key,
+        chunk_size=chunk_size,
+        overlap=overlap
+    )
     
-    # Ingest both PDFs from workspace root
-    pdf1_path = os.path.join(workspace_root, "a2017-12.pdf")
-    pdf2_path = os.path.join(workspace_root, "Income-tax-Act-2025.pdf")
+    # Determine PDF paths
+    if pdfs_folder:
+        # Use custom pdfs folder
+        pdf1_path = os.path.join(pdfs_folder, "a2017-12.pdf")
+        pdf2_path = os.path.join(pdfs_folder, "Income-tax-Act-2025.pdf")
+    else:
+        # Get the parent directory (workspace root)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        workspace_root = os.path.dirname(os.path.dirname(script_dir))
+        
+        # Ingest both PDFs from workspace root
+        pdf1_path = os.path.join(workspace_root, "a2017-12.pdf")
+        pdf2_path = os.path.join(workspace_root, "Income-tax-Act-2025.pdf")
     
     pipeline.ingest_document(pdf1_path, "GST")
     pipeline.ingest_document(pdf2_path, "Income_Tax")
