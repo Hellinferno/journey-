@@ -1,6 +1,7 @@
 """
 PDF Ingestion Pipeline for RAG Compliance Engine
 Processes legal PDFs and stores chunks with embeddings in Convex
+Uses Google Gemini embeddings API
 """
 import os
 import time
@@ -48,7 +49,7 @@ class PDFIngestionPipeline:
             json.dump(progress, f, indent=2)
     
     def rate_limit(self):
-        """Implement rate limiting to stay under 100 requests/minute"""
+        """Implement rate limiting"""
         self.request_count += 1
         
         # Check if we've hit the per-minute limit
@@ -112,7 +113,6 @@ class PDFIngestionPipeline:
             chunk = text[start:end]
             
             # Skip empty chunks and chunks with only whitespace/control characters
-            # Check if chunk has any printable or non-whitespace characters
             if chunk.strip() and any(c.isprintable() and not c.isspace() for c in chunk):
                 chunks.append({
                     "text": chunk,
@@ -160,6 +160,8 @@ class PDFIngestionPipeline:
                     raise e
                 # Exponential backoff
                 time.sleep(2 ** attempt)
+        
+        raise Exception("Failed to generate embedding after all retries")
 
     
     def ingest_document(self, pdf_path: str, category: str):
@@ -204,9 +206,9 @@ class PDFIngestionPipeline:
                 
             except Exception as e:
                 error_str = str(e)
-                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                if "429" in error_str or "quota" in error_str.lower():
                     print(f"\n[QUOTA EXCEEDED] Processed {i}/{total_chunks} chunks")
-                    print(f"Progress saved. Run script again tomorrow to continue from chunk {i+1}")
+                    print(f"Progress saved. Run script again to continue from chunk {i+1}")
                     return
                 
                 print(f"\n[ERROR] Error processing chunk {i+1}: {e}")
