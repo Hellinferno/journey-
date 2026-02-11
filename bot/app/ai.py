@@ -152,8 +152,8 @@ def analyze_invoice_with_gemini(image_path: str) -> InvoiceData:
         raise ValueError("GOOGLE_API_KEY not configured")
 
     try:
-        # Initialize Gemini model
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # Initialize Gemini model - using stable version
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = """
 Extract data from this Indian invoice in strict JSON format.
@@ -186,7 +186,7 @@ Return ONLY the JSON object, no additional text.
         print("📤 Uploading image to Gemini...")
         uploaded_file = genai.upload_file(image_path)
         
-        print("📤 Sending to Gemini 2.5 Flash...")
+        print("📤 Sending to Gemini 1.5 Flash...")
         response = model.generate_content([prompt, uploaded_file])
         response_text = response.text
         
