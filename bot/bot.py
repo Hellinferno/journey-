@@ -27,13 +27,27 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Load Configuration
-load_dotenv()
+# Railway provides environment variables directly, no .env file needed
+# load_dotenv() is only for local development
+load_dotenv()  # This will be ignored on Railway if vars are already set
+
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CONVEX_URL = os.getenv("CONVEX_URL")
-CONVEX_CLIENT = ConvexClient(CONVEX_URL)
 
+# Validate required environment variables
 if not TELEGRAM_TOKEN:
-    raise ValueError("Missing TELEGRAM_TOKEN in .env")
+    logger.error("TELEGRAM_TOKEN environment variable is not set!")
+    logger.error(f"Available env vars: {list(os.environ.keys())}")
+    raise ValueError("Missing TELEGRAM_TOKEN environment variable. Please set it in Railway Dashboard → Variables tab.")
+
+if not CONVEX_URL:
+    logger.error("CONVEX_URL environment variable is not set!")
+    raise ValueError("Missing CONVEX_URL environment variable. Please set it in Railway Dashboard → Variables tab.")
+
+logger.info(f"✅ TELEGRAM_TOKEN loaded: {TELEGRAM_TOKEN[:10]}...")
+logger.info(f"✅ CONVEX_URL loaded: {CONVEX_URL}")
+
+CONVEX_CLIENT = ConvexClient(CONVEX_URL)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
