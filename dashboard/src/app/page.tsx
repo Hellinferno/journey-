@@ -176,7 +176,12 @@ export default function Dashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `₹${value || 0}`} />
+                  <Tooltip 
+                    formatter={(value: any) => {
+                      const numValue = typeof value === 'number' ? value : 0;
+                      return `₹${numValue}`;
+                    }} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex justify-center gap-4 text-xs text-zinc-500 mt-4">
