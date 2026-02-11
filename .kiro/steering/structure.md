@@ -4,19 +4,18 @@
 
 ```
 journey/
-├── micro-cfo/              # Python Telegram bot (main application)
+├── bot/                    # Python Telegram bot (main application)
 ├── dashboard/              # Next.js real-time dashboard
 ├── .kiro/                  # Kiro configuration and specs
 │   ├── specs/              # Feature specifications
 │   └── steering/           # Project steering rules
-├── convex/                 # Shared Convex schema (legacy)
 └── *.pdf                   # Legal documents (GST Act, Income Tax Act)
 ```
 
-## Telegram Bot (micro-cfo/)
+## Telegram Bot (bot/)
 
 ```
-micro-cfo/
+bot/
 ├── app/                    # Core application modules
 │   ├── ai.py              # Invoice extraction using Gemini AI
 │   ├── compliance.py      # Compliance orchestrator (main workflow)
@@ -111,7 +110,7 @@ dashboard/
 8. **dashboard/** → Real-time visualization
 
 ### Shared Components
-- **Convex Schema**: Defined in both `micro-cfo/convex/` and `dashboard/convex/` (must stay in sync)
+- **Convex Schema**: Defined in `dashboard/convex/` (single source of truth)
 - **Legal Documents**: PDFs in root directory, ingested into Convex vector database
 - **Environment Variables**: Separate `.env` files for bot and dashboard
 

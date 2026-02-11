@@ -14,7 +14,7 @@ Micro-CFO is an AI-powered Telegram bot that automates GST and Income Tax compli
 
 The system consists of three main components:
 
-1. **Telegram Bot** (`micro-cfo/`): Python-based bot that processes invoice images and orchestrates compliance checks
+1. **Telegram Bot** (`bot/`): Python-based bot that processes invoice images and orchestrates compliance checks
 2. **Convex Database**: Serverless database with vector search for legal documents and invoice storage
 3. **Dashboard** (`dashboard/`): Next.js real-time monitoring interface with financial KPIs and charts
 

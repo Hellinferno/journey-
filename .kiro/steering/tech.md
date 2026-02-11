@@ -52,7 +52,7 @@
 
 ## Common Commands
 
-### Telegram Bot (micro-cfo/)
+### Telegram Bot (bot/)
 
 ```bash
 # Setup
@@ -72,7 +72,8 @@ pytest tests/
 # Ingest legal PDFs
 python scripts/ingest_pdfs.py
 
-# Deploy Convex schema
+# Deploy Convex schema (from dashboard/)
+cd ../dashboard
 npx convex deploy
 ```
 
@@ -100,7 +101,7 @@ npx convex deploy
 
 ## Environment Configuration
 
-### Bot (.env in micro-cfo/)
+### Bot (.env in bot/)
 ```
 TELEGRAM_TOKEN=your_telegram_bot_token
 GOOGLE_API_KEY=your_google_gemini_api_key
