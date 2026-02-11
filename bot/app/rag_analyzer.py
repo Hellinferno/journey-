@@ -1,25 +1,26 @@
 """
 AI Compliance Analyzer
-Uses Gemini with legal context to determine invoice compliance
+Uses Kimi K2.5 via NVIDIA API with legal context to determine invoice compliance
 """
-from google import genai
+import requests
 from app.schemas import InvoiceData
 from typing import Dict, List
 import json
 
 
 class AIComplianceAnalyzer:
-    """AI-powered compliance analyzer using Gemini"""
+    """AI-powered compliance analyzer using Kimi K2.5"""
     
     def __init__(self, api_key: str):
         """
         Initialize the AI compliance analyzer
         
         Args:
-            api_key: Google API key
+            api_key: NVIDIA API key
         """
-        self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.0-flash-exp"
+        self.api_key = api_key
+        self.api_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+        self.model_name = "moonshotai/kimi-k2.5"
 
     
     def analyze_compliance(self, invoice: InvoiceData, legal_context: str) -> Dict:
@@ -67,20 +68,45 @@ Rules:
 - Use "compliant" only if clearly allowed
 - Base decisions on the provided legal text when available
 - Be specific in flags, citing sections when possible
+
+Return ONLY the JSON object, no additional text.
 """
         
         try:
-            from google.genai import types
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Accept": "application/json"
+            }
             
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.1
-                )
-            )
-            result = json.loads(response.text)
+            payload = {
+                "model": self.model_name,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "max_tokens": 2048,
+                "temperature": 0.1,
+                "top_p": 0.95,
+                "stream": False
+            }
+            
+            response = requests.post(self.api_url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            response_text = result["choices"][0]["message"]["content"]
+            
+            # Clean and parse response
+            import re
+            response_text = re.sub(r"```(json)?", "", response_text).replace("```", "").strip()
+            start = response_text.find("{")
+            end = response_text.rfind("}")
+            if start != -1 and end != -1:
+                response_text = response_text[start:end+1]
+            
+            result = json.loads(response_text)
             
             # Validate response structure
             if "status" not in result or result["status"] not in ["compliant", "review_needed", "blocked"]:

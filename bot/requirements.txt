@@ -1,9 +1,9 @@
 python-telegram-bot>=22.6
+requests>=2.31.0
 google-genai
 convex
 python-dotenv
 Pillow
-requests
 pytesseract
 pypdf>=3.0.0
 pydantic

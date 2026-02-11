@@ -20,19 +20,25 @@ class ComplianceAuditor:
     
     def __init__(self):
         """Initialize the compliance auditor with all components"""
-        self.api_key = os.getenv("GOOGLE_API_KEY")
+        self.nvidia_api_key = os.getenv("NVIDIA_API_KEY")
+        self.google_api_key = os.getenv("GOOGLE_API_KEY")
         self.convex_url = os.getenv("CONVEX_URL")
         
         # Validate required environment variables
-        if not self.api_key:
+        if not self.nvidia_api_key:
+            raise ValueError(
+                "Missing required environment variable: NVIDIA_API_KEY\n"
+                "Please set NVIDIA_API_KEY in your .env file or Railway environment variables"
+            )
+        if not self.google_api_key:
             raise ValueError(
                 "Missing required environment variable: GOOGLE_API_KEY\n"
-                "Please set GOOGLE_API_KEY in your .env file"
+                "Please set GOOGLE_API_KEY for embeddings in your .env file or Railway environment variables"
             )
         if not self.convex_url:
             raise ValueError(
                 "Missing required environment variable: CONVEX_URL\n"
-                "Please set CONVEX_URL in your .env file"
+                "Please set CONVEX_URL in your .env file or Railway environment variables"
             )
         
         # Get configurable parameters
@@ -41,8 +47,8 @@ class ComplianceAuditor:
         self.convex = ConvexClient(self.convex_url)
         
         self.hard_rules = HardRulesValidator()
-        self.query_engine = RAGQueryEngine(self.api_key, search_limit=search_limit)
-        self.ai_analyzer = AIComplianceAnalyzer(self.api_key)
+        self.query_engine = RAGQueryEngine(self.google_api_key, search_limit=search_limit)  # Google for embeddings
+        self.ai_analyzer = AIComplianceAnalyzer(self.nvidia_api_key)  # NVIDIA for analysis
     
     def audit_invoice(self, invoice: InvoiceData) -> Dict:
         """
