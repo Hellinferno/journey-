@@ -1,27 +1,20 @@
 """
 AI Invoice Analyzer
-Uses Kimi K2.5 via NVIDIA API to extract invoice data from images
+Uses Google Gemini 2.5 Flash to extract invoice data from images
 """
-import requests
-import base64
+import google.generativeai as genai
 import os
 import json
 import re
 from app.schemas import InvoiceData
-from PIL import Image
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# NVIDIA API Configuration
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
-NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-
-def image_to_base64(image_path: str) -> str:
-    """Convert image to base64 string"""
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
+# Google Gemini Configuration
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
 
 
 def clean_json_text(text: str) -> str:
@@ -40,7 +33,7 @@ def clean_json_text(text: str) -> str:
 
 def analyze_invoice(image_path: str) -> InvoiceData:
     """
-    Analyze invoice image using Kimi K2.5
+    Analyze invoice image using Google Gemini 2.5 Flash
     
     Args:
         image_path: Path to invoice image file
@@ -48,16 +41,12 @@ def analyze_invoice(image_path: str) -> InvoiceData:
     Returns:
         InvoiceData object with extracted information
     """
-    if not NVIDIA_API_KEY:
-        raise ValueError("NVIDIA_API_KEY not configured")
+    if not GOOGLE_API_KEY:
+        raise ValueError("GOOGLE_API_KEY not configured")
 
     try:
-        # Convert image to base64
-        image_base64 = image_to_base64(image_path)
-        
-        # Determine image format
-        with Image.open(image_path) as img:
-            image_format = img.format.lower() if img.format else 'jpeg'
+        # Initialize Gemini model
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         prompt = """
 Extract data from this Indian invoice in strict JSON format.
@@ -86,39 +75,13 @@ JSON Structure:
 Return ONLY the JSON object, no additional text.
 """
         
-        headers = {
-            "Authorization": f"Bearer {NVIDIA_API_KEY}",
-            "Accept": "application/json"
-        }
+        # Upload image file
+        print("📤 Uploading image to Gemini...")
+        uploaded_file = genai.upload_file(image_path)
         
-        payload = {
-            "model": "moonshotai/kimi-k2.5",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/{image_format};base64,{image_base64}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            "max_tokens": 2048,
-            "temperature": 0.1,
-            "top_p": 0.95,
-            "stream": False
-        }
-        
-        print("📤 Sending to Kimi K2.5...")
-        response = requests.post(NVIDIA_API_URL, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        
-        result = response.json()
-        response_text = result["choices"][0]["message"]["content"]
+        print("📤 Sending to Gemini 2.5 Flash...")
+        response = model.generate_content([prompt, uploaded_file])
+        response_text = response.text
         
         # Clean and parse response
         clean_text = clean_json_text(response_text)

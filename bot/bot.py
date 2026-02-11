@@ -12,6 +12,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Messa
 from convex import ConvexClient
 from app.ai import analyze_invoice
 from app.compliance import audit_invoice
+from app.integrations.zoho import ZohoConnector
 
 # Setup Logging
 logging.basicConfig(
@@ -169,6 +170,36 @@ async def handle_document_or_photo(update: Update, context: ContextTypes.DEFAULT
                     reply_text += f"📄 {citation['source']}, Page {citation['page']}\n"
             
             await msg.reply_text(reply_text, parse_mode="Markdown")
+
+            # --- ZOHO INTEGRATION START ---
+            if os.getenv("ZOHO_ENABLED") == "true":
+                await msg.reply_text("🔄 Syncing with Zoho Books...")
+                
+                # Initialize Connector
+                zoho = ZohoConnector(
+                    auth_token=os.getenv("ZOHO_TOKEN"),
+                    organization_id=os.getenv("ZOHO_ORG_ID")
+                )
+                
+                # Prepare invoice data for Zoho
+                invoice_data = {
+                    "_id": str(chat_id),  # Using chat_id as unique identifier
+                    "vendor": invoice.vendor_name,
+                    "amount": invoice.total_amount,
+                    "date": invoice.date or "2024-01-01",
+                    "gstin": invoice.gstin,
+                    "category": invoice.category.value,
+                    "item": "Invoice Item"
+                }
+                
+                # Send to Zoho
+                zoho_result = zoho.create_bill(invoice_data)
+                
+                if zoho_result['status'] == "success":
+                    await msg.reply_text("✅ **Synced to Zoho Books!**", parse_mode="Markdown")
+                else:
+                    await msg.reply_text(f"⚠️ Zoho Sync Failed: {zoho_result['msg']}")
+            # --- ZOHO INTEGRATION END ---
 
         except Exception as ai_error:
             logger.error(f"AI Processing Error: {ai_error}")
