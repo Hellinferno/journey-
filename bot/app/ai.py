@@ -2,7 +2,8 @@
 AI Invoice Analyzer
 Uses Google Gemini to extract invoice data from images
 """
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import os
 import json
 import re
@@ -13,8 +14,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure Gemini API
+client = None
 if os.getenv("GOOGLE_API_KEY"):
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 
 def clean_json_text(text: str) -> str:
@@ -41,16 +43,17 @@ def analyze_invoice(image_path: str) -> InvoiceData:
     Returns:
         InvoiceData object with extracted information
     """
-    model = genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.1
-        }
-    )
+    if not client:
+        raise ValueError("Google API key not configured")
 
     try:
         with Image.open(image_path) as img:
+            # Convert PIL Image to bytes
+            import io
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format=img.format or 'PNG')
+            img_bytes = img_byte_arr.getvalue()
+            
             prompt = """
             Extract data from this Indian invoice in strict JSON format.
             Analyze the items to determine the appropriate category.
@@ -77,7 +80,18 @@ def analyze_invoice(image_path: str) -> InvoiceData:
             """
             
             print("📤 Sending to Gemini 2.5 Flash...")
-            response = model.generate_content([prompt, img])
+            
+            response = client.models.generate_content(
+                model='gemini-2.0-flash-exp',
+                contents=[
+                    types.Part.from_text(prompt),
+                    types.Part.from_bytes(data=img_bytes, mime_type=f"image/{img.format.lower() if img.format else 'png'}")
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.1
+                )
+            )
             
             # Clean and parse response
             clean_text = clean_json_text(response.text)

@@ -1,5 +1,4 @@
 python-telegram-bot>=22.6
-google-generativeai
 google-genai
 convex
 python-dotenv
